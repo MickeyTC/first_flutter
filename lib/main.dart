@@ -8,6 +8,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Welcome to Flutter',
+      theme: ThemeData(
+        primaryColor: Colors.white,
+      ),
       home: RandomWords(),
     );
   }
@@ -22,6 +25,33 @@ class _RandomWordsState extends State<RandomWords> {
   final _suggestions = <WordPair>[];
   final _saved = <WordPair>{};
   final _biggerFont = const TextStyle(fontSize: 18);
+
+  void _pushSaved() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) {
+          return Scaffold(
+            appBar: AppBar(
+              title: Text('Saved Suggestions'),
+            ),
+            body: ListView(
+              children: ListTile.divideTiles(
+                context: context,
+                tiles: _saved.map((WordPair pair) {
+                  return ListTile(
+                    title: Text(
+                      pair.asPascalCase,
+                      style: _biggerFont,
+                    ),
+                  );
+                }),
+              ).toList(),
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   Widget _buildSuggestions() {
     return ListView.builder(
@@ -68,6 +98,12 @@ class _RandomWordsState extends State<RandomWords> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Startup Name Generator'),
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(Icons.list),
+            onPressed: _pushSaved,
+          )
+        ],
       ),
       body: _buildSuggestions(),
     );
