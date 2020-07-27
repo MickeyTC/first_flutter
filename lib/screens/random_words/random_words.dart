@@ -10,7 +10,8 @@ class RandomWords extends StatefulWidget {
 
 class _RandomWordsState extends State<RandomWords> {
   final wordsCollection = Firestore.instance.collection('Words');
-  final wordList = <Word>[];
+  List<Word> wordList = <Word>[];
+  Future<List<Word>> _futureWords;
   final _biggerFont = const TextStyle(fontSize: 18);
 
   @override
@@ -24,17 +25,20 @@ class _RandomWordsState extends State<RandomWords> {
     //     'isFav': word.isFav,
     //   });
     // });
-    loadWordList();
+    _futureWords = loadWordList();
   }
 
-  Future<void> loadWordList() async {
-    var query = await wordsCollection.getDocuments();
-    setState(() {
-      wordList.addAll(query.documents.map((document) => Word(
-          document.data['value'],
-          isFav: document.data['isFav'],
-          id: document.documentID)));
-    });
+  Future<List<Word>> loadWordList() async {
+    try {
+      final query = await wordsCollection.getDocuments();
+      return query.documents
+          .map((document) => Word(document.data['value'],
+              isFav: document.data['isFav'], id: document.documentID))
+          .toList();
+    } catch (e) {
+      print(e);
+      rethrow;
+    }
   }
 
   void _pushSaved() {
@@ -43,7 +47,7 @@ class _RandomWordsState extends State<RandomWords> {
         builder: (context) {
           return Scaffold(
             appBar: AppBar(
-              title: Text('Saved Suggestions'),
+              title: Text('Favorited Words'),
             ),
             body: ListView(
               children: ListTile.divideTiles(
@@ -64,36 +68,40 @@ class _RandomWordsState extends State<RandomWords> {
     );
   }
 
-  void _onTap(Word word) async {
+  void _onTap(Word word) {
     final alreadySaved = word.isFav;
     if (alreadySaved) {
+      wordsCollection.document(word.id).updateData({'isFav': false});
       setState(() {
         word.setFav(false);
       });
-      try {
-        await wordsCollection.document(word.id).updateData({'isFav': false});
-      } catch (e) {
-        print(e);
-      }
     } else {
+      wordsCollection.document(word.id).updateData({'isFav': true});
       setState(() {
         word.setFav(true);
       });
-      try {
-        await wordsCollection.document(word.id).updateData({'isFav': true});
-      } catch (e) {
-        print(e);
-      }
     }
   }
 
   Widget _buildList() {
-    return ListView.separated(
-        itemCount: wordList.length,
-        itemBuilder: (context, index) => _buildRow(wordList[index]),
-        separatorBuilder: (context, index) {
-          return Divider();
-        });
+    return FutureBuilder(
+      future: _futureWords,
+      builder: (context, AsyncSnapshot<List<Word>> snapshot) {
+        if (snapshot.hasData) {
+          wordList = snapshot.data;
+          return ListView.separated(
+              itemCount: wordList.length,
+              itemBuilder: (context, index) => _buildRow(wordList[index]),
+              separatorBuilder: (context, index) {
+                return Divider();
+              });
+        } else if (snapshot.hasError) {
+          return Text(snapshot.error.toString());
+        }
+
+        return Center(child: CircularProgressIndicator());
+      },
+    );
   }
 
   Widget _buildRow(Word word) {
@@ -115,7 +123,7 @@ class _RandomWordsState extends State<RandomWords> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Startup Name Generator'),
+        title: Text('Word List'),
         actions: <Widget>[
           IconButton(
             icon: Icon(Icons.list),
