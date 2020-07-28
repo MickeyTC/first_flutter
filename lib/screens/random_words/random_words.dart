@@ -86,7 +86,7 @@ class _RandomWordsState extends State<RandomWords> {
               child: ListView(
                 children: ListTile.divideTiles(
                   context: context,
-                  tiles: snapshot.data.map((word) => _buildRow(word)),
+                  tiles: snapshot.data.map((word) => _buildRow(context, word)),
                 ).toList(),
               ),
             ),
@@ -105,17 +105,38 @@ class _RandomWordsState extends State<RandomWords> {
     );
   }
 
-  Widget _buildRow(Word word) {
-    return ListTile(
-      title: Text(
-        word.value,
-        style: _biggerFont,
+  Widget _buildRow(BuildContext context, Word word) {
+    return Dismissible(
+      key: Key(word.id),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: EdgeInsets.fromLTRB(0, 0, 45, 0),
+        color: Colors.red,
+        child: Icon(
+          Icons.delete_outline,
+          color: Colors.white,
+        ),
       ),
-      trailing: Icon(
-        word.isFav ? Icons.favorite : Icons.favorite_border,
-        color: word.isFav ? Colors.red : null,
+      direction: DismissDirection.endToStart,
+      onDismissed: (direction) {
+        setState(() {
+          wordList.remove(word);
+        });
+        Scaffold.of(context).showSnackBar(SnackBar(
+          content: Text('${word.value} dismissed'),
+        ));
+      },
+      child: ListTile(
+        title: Text(
+          word.value,
+          style: _biggerFont,
+        ),
+        trailing: Icon(
+          word.isFav ? Icons.favorite : Icons.favorite_border,
+          color: word.isFav ? Colors.red : null,
+        ),
+        onTap: () => _onTap(word),
       ),
-      onTap: () => _onTap(word),
     );
   }
 
