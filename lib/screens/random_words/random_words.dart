@@ -17,14 +17,6 @@ class _RandomWordsState extends State<RandomWords> {
   @override
   void initState() {
     super.initState();
-    // wordList
-    //     .addAll(generateWordPairs().take(30).map((e) => Word(e.asPascalCase)));
-    // wordList.forEach((word) async {
-    //   await wordsCollection.document(word.id).setData({
-    //     'value': word.value,
-    //     'isFav': word.isFav,
-    //   });
-    // });
     _futureWords = loadWordList();
   }
 
@@ -68,17 +60,17 @@ class _RandomWordsState extends State<RandomWords> {
     );
   }
 
-  void _onTap(Word word) {
-    final alreadySaved = word.isFav;
-    if (alreadySaved) {
-      wordsCollection.document(word.id).updateData({'isFav': false});
+  Future<void> _onTap(Word word) async {
+    final isFaved = word.isFav;
+    setState(() {
+      word.setFav(!isFaved);
+    });
+    try {
+      await wordsCollection.document(word.id).updateData({'isFav': !isFaved});
+    } catch (e) {
+      print(e);
       setState(() {
-        word.setFav(false);
-      });
-    } else {
-      wordsCollection.document(word.id).updateData({'isFav': true});
-      setState(() {
-        word.setFav(true);
+        _futureWords = loadWordList();
       });
     }
   }
@@ -89,14 +81,23 @@ class _RandomWordsState extends State<RandomWords> {
       builder: (context, AsyncSnapshot<List<Word>> snapshot) {
         if (snapshot.hasData) {
           wordList = snapshot.data;
-          return ListView.separated(
-              itemCount: wordList.length,
-              itemBuilder: (context, index) => _buildRow(wordList[index]),
-              separatorBuilder: (context, index) {
-                return Divider();
+          return RefreshIndicator(
+            child: Scrollbar(
+              child: ListView(
+                children: ListTile.divideTiles(
+                  context: context,
+                  tiles: snapshot.data.map((word) => _buildRow(word)),
+                ).toList(),
+              ),
+            ),
+            onRefresh: () async {
+              setState(() {
+                _futureWords = loadWordList();
               });
+            },
+          );
         } else if (snapshot.hasError) {
-          return Text(snapshot.error.toString());
+          return Center(child: Text(snapshot.error.toString()));
         }
 
         return Center(child: CircularProgressIndicator());
@@ -105,15 +106,14 @@ class _RandomWordsState extends State<RandomWords> {
   }
 
   Widget _buildRow(Word word) {
-    final alreadySaved = word.isFav;
     return ListTile(
       title: Text(
         word.value,
         style: _biggerFont,
       ),
       trailing: Icon(
-        alreadySaved ? Icons.favorite : Icons.favorite_border,
-        color: alreadySaved ? Colors.red : null,
+        word.isFav ? Icons.favorite : Icons.favorite_border,
+        color: word.isFav ? Colors.red : null,
       ),
       onTap: () => _onTap(word),
     );
