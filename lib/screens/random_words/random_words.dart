@@ -83,11 +83,17 @@ class _RandomWordsState extends State<RandomWords> {
           wordList = snapshot.data;
           return RefreshIndicator(
             child: Scrollbar(
-              child: ListView(
-                children: ListTile.divideTiles(
-                  context: context,
-                  tiles: snapshot.data.map((word) => _buildRow(context, word)),
-                ).toList(),
+              child: ReorderableListView(
+                onReorder: (oldIndex, newIndex) {
+                  if (oldIndex < newIndex) {
+                    newIndex--;
+                  }
+                  setState(() {
+                    wordList.insert(newIndex, wordList.removeAt(oldIndex));
+                  });
+                },
+                children:
+                    wordList.map((word) => _buildRow(context, word)).toList(),
               ),
             ),
             onRefresh: () async {
